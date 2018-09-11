@@ -23,7 +23,6 @@ import (
 	"github.com/9thchain/trie/common"
 	"github.com/9thchain/trie/crypto"
 	kvdb "github.com/9thchain/trie/db"
-	"github.com/9thchain/trie/log"
 	"github.com/9thchain/trie/rlp"
 )
 
