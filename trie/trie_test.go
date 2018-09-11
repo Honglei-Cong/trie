@@ -32,7 +32,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/9thchain/trie/common"
 	"github.com/9thchain/trie/crypto"
-	"github.com/9thchain/trie/ethdb"
+	kvdb "github.com/9thchain/trie/db"
 	"github.com/9thchain/trie/rlp"
 )
 
@@ -43,7 +43,7 @@ func init() {
 
 // Used for testing
 func newEmpty() *Trie {
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	trie, _ := New(common.Hash{}, NewDatabase(diskdb))
 	return trie
 }
@@ -68,7 +68,7 @@ func TestNull(t *testing.T) {
 }
 
 func TestMissingRoot(t *testing.T) {
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	trie, err := New(common.HexToHash("0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"), NewDatabase(diskdb))
 	if trie != nil {
 		t.Error("New returned non-nil trie for invalid root")
@@ -82,7 +82,7 @@ func TestMissingNodeDisk(t *testing.T)    { testMissingNode(t, false) }
 func TestMissingNodeMemonly(t *testing.T) { testMissingNode(t, true) }
 
 func testMissingNode(t *testing.T, memonly bool) {
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
 	trie, _ := New(common.Hash{}, triedb)
@@ -319,7 +319,7 @@ func TestLargeValue(t *testing.T) {
 }
 
 type countingDB struct {
-	ethdb.Database
+	kvdb.Database
 	gets map[string]int
 }
 
@@ -413,7 +413,7 @@ func (randTest) Generate(r *rand.Rand, size int) reflect.Value {
 }
 
 func runRandTest(rt randTest) bool {
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
 	tr, _ := New(common.Hash{}, triedb)
@@ -542,7 +542,7 @@ func benchGet(b *testing.B, commit bool) {
 	b.StopTimer()
 
 	if commit {
-		ldb := trie.db.diskdb.(*ethdb.LDBDatabase)
+		ldb := trie.db.diskdb.(*kvdb.LDBDatabase)
 		ldb.Close()
 		os.RemoveAll(ldb.Path())
 	}
@@ -598,7 +598,7 @@ func tempDB() (string, *Database) {
 	if err != nil {
 		panic(fmt.Sprintf("can't create temporary directory: %v", err))
 	}
-	diskdb, err := ethdb.NewLDBDatabase(dir, 256, 0)
+	diskdb, err := kvdb.NewLDBDatabase(dir, 256, 0)
 	if err != nil {
 		panic(fmt.Sprintf("can't create temporary database: %v", err))
 	}

@@ -22,7 +22,7 @@ import (
 
 	"github.com/9thchain/trie/common"
 	"github.com/9thchain/trie/crypto"
-	"github.com/9thchain/trie/ethdb"
+	kvdb "github.com/9thchain/trie/db"
 	"github.com/9thchain/trie/log"
 	"github.com/9thchain/trie/rlp"
 )
@@ -34,7 +34,7 @@ import (
 // If the trie does not contain a value for key, the returned proof contains all
 // nodes of the longest existing prefix of the key (at least the root node), ending
 // with the node that proves the absence of the key.
-func (t *Trie) Prove(key []byte, fromLevel uint, proofDb ethdb.Putter) error {
+func (t *Trie) Prove(key []byte, fromLevel uint, proofDb kvdb.Putter) error {
 	// Collect all nodes on the path to key.
 	key = keybytesToHex(key)
 	nodes := []node{}
@@ -58,7 +58,7 @@ func (t *Trie) Prove(key []byte, fromLevel uint, proofDb ethdb.Putter) error {
 			var err error
 			tn, err = t.resolveHash(n, nil)
 			if err != nil {
-				log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
+				logger.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 				return err
 			}
 		default:
@@ -95,7 +95,7 @@ func (t *Trie) Prove(key []byte, fromLevel uint, proofDb ethdb.Putter) error {
 // If the trie does not contain a value for key, the returned proof contains all
 // nodes of the longest existing prefix of the key (at least the root node), ending
 // with the node that proves the absence of the key.
-func (t *SecureTrie) Prove(key []byte, fromLevel uint, proofDb ethdb.Putter) error {
+func (t *SecureTrie) Prove(key []byte, fromLevel uint, proofDb kvdb.Putter) error {
 	return t.trie.Prove(key, fromLevel, proofDb)
 }
 

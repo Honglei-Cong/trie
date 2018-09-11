@@ -24,11 +24,11 @@ import (
 
 	"github.com/9thchain/trie/common"
 	"github.com/9thchain/trie/crypto"
-	"github.com/9thchain/trie/ethdb"
+	kvdb "github.com/9thchain/trie/db"
 )
 
 func newEmptySecure() *SecureTrie {
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
 	trie, _ := NewSecure(common.Hash{}, triedb, 0)
@@ -38,7 +38,7 @@ func newEmptySecure() *SecureTrie {
 // makeTestSecureTrie creates a large enough secure trie for testing.
 func makeTestSecureTrie() (*Database, *SecureTrie, map[string][]byte) {
 	// Create an empty trie
-	diskdb, _ := ethdb.NewMemDatabase()
+	diskdb, _ := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
 	trie, _ := NewSecure(common.Hash{}, triedb, 0)
