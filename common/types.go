@@ -25,8 +25,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
+	"github.com/9thchain/trie/common/hexutil"
+	"github.com/9thchain/trie/crypto/sha3"
 )
 
 const (
