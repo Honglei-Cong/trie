@@ -23,8 +23,7 @@ import (
 
 	"github.com/9thchain/trie/common"
 	"github.com/9thchain/trie/crypto"
-	"github.com/9thchain/trie/log"
-	"github.com/9thchain/trie/metrics"
+	"github.com/op/go-logging"
 )
 
 var (
@@ -33,26 +32,9 @@ var (
 
 	// emptyState is the known hash of an empty state trie entry.
 	emptyState = crypto.Keccak256Hash(nil)
+
+	logger = logging.MustGetLogger("trie")
 )
-
-var (
-	cacheMissCounter   = metrics.NewRegisteredCounter("trie/cachemiss", nil)
-	cacheUnloadCounter = metrics.NewRegisteredCounter("trie/cacheunload", nil)
-)
-
-// CacheMisses retrieves a global counter measuring the number of cache misses
-// the trie had since process startup. This isn't useful for anything apart from
-// trie debugging purposes.
-func CacheMisses() int64 {
-	return cacheMissCounter.Count()
-}
-
-// CacheUnloads retrieves a global counter measuring the number of cache unloads
-// the trie did since process startup. This isn't useful for anything apart from
-// trie debugging purposes.
-func CacheUnloads() int64 {
-	return cacheUnloadCounter.Count()
-}
 
 // LeafCallback is a callback type invoked when a trie operation reaches a leaf
 // node. It's used by state sync and commit to allow handling external references
@@ -122,7 +104,7 @@ func (t *Trie) NodeIterator(start []byte) NodeIterator {
 func (t *Trie) Get(key []byte) []byte {
 	res, err := t.TryGet(key)
 	if err != nil {
-		log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
+		logger.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 	return res
 }
@@ -185,7 +167,7 @@ func (t *Trie) tryGet(origNode node, key []byte, pos int) (value []byte, newnode
 // stored in the trie.
 func (t *Trie) Update(key, value []byte) {
 	if err := t.TryUpdate(key, value); err != nil {
-		log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
+		logger.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 }
 
@@ -287,7 +269,7 @@ func (t *Trie) insert(n node, prefix, key []byte, value node) (bool, node, error
 // Delete removes any existing value for key from the trie.
 func (t *Trie) Delete(key []byte) {
 	if err := t.TryDelete(key); err != nil {
-		log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
+		logger.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 }
 
@@ -430,8 +412,6 @@ func (t *Trie) resolve(n node, prefix []byte) (node, error) {
 }
 
 func (t *Trie) resolveHash(n hashNode, prefix []byte) (node, error) {
-	cacheMissCounter.Inc(1)
-
 	hash := common.BytesToHash(n)
 
 	enc, err := t.db.Node(hash)

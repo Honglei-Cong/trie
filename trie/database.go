@@ -21,8 +21,7 @@ import (
 	"time"
 
 	"github.com/9thchain/trie/common"
-	"github.com/9thchain/trie/ethdb"
-	"github.com/9thchain/trie/log"
+	kvdb "github.com/9thchain/trie/db"
 )
 
 // secureKeyPrefix is the database key prefix used to store trie node preimages.
@@ -44,7 +43,7 @@ type DatabaseReader interface {
 // the disk database. The aim is to accumulate trie writes in-memory and only
 // periodically flush a couple tries to disk, garbage collecting the remainder.
 type Database struct {
-	diskdb ethdb.Database // Persistent storage for matured trie nodes
+	diskdb kvdb.Database // Persistent storage for matured trie nodes
 
 	nodes     map[common.Hash]*cachedNode // Data and references relationships of a node
 	preimages map[common.Hash][]byte      // Preimages of nodes from the secure trie
@@ -70,7 +69,7 @@ type cachedNode struct {
 
 // NewDatabase creates a new trie database to store ephemeral trie content before
 // its written out to disk or garbage collected.
-func NewDatabase(diskdb ethdb.Database) *Database {
+func NewDatabase(diskdb kvdb.Database) *Database {
 	return &Database{
 		diskdb: diskdb,
 		nodes: map[common.Hash]*cachedNode{
@@ -208,7 +207,7 @@ func (db *Database) Dereference(child common.Hash, parent common.Hash) {
 	db.gcsize += storage - db.nodesSize
 	db.gctime += time.Since(start)
 
-	log.Debug("Dereferenced trie from memory database", "nodes", nodes-len(db.nodes), "size", storage-db.nodesSize, "time", time.Since(start),
+	logger.Debug("Dereferenced trie from memory database", "nodes", nodes-len(db.nodes), "size", storage-db.nodesSize, "time", time.Since(start),
 		"gcnodes", db.gcnodes, "gcsize", db.gcsize, "gctime", db.gctime, "livenodes", len(db.nodes), "livesize", db.nodesSize)
 }
 
@@ -254,11 +253,11 @@ func (db *Database) Commit(node common.Hash, report bool) error {
 	// Move all of the accumulated preimages into a write batch
 	for hash, preimage := range db.preimages {
 		if err := batch.Put(db.secureKey(hash[:]), preimage); err != nil {
-			log.Error("Failed to commit preimage from trie database", "err", err)
+			logger.Error("Failed to commit preimage from trie database", "err", err)
 			db.lock.RUnlock()
 			return err
 		}
-		if batch.ValueSize() > ethdb.IdealBatchSize {
+		if batch.ValueSize() > kvdb.IdealBatchSize {
 			if err := batch.Write(); err != nil {
 				return err
 			}
@@ -268,13 +267,13 @@ func (db *Database) Commit(node common.Hash, report bool) error {
 	// Move the trie itself into the batch, flushing if enough data is accumulated
 	nodes, storage := len(db.nodes), db.nodesSize+db.preimagesSize
 	if err := db.commit(node, batch); err != nil {
-		log.Error("Failed to commit trie from trie database", "err", err)
+		logger.Error("Failed to commit trie from trie database", "err", err)
 		db.lock.RUnlock()
 		return err
 	}
 	// Write batch ready, unlock for readers during persistence
 	if err := batch.Write(); err != nil {
-		log.Error("Failed to write trie to disk", "err", err)
+		logger.Error("Failed to write trie to disk", "err", err)
 		db.lock.RUnlock()
 		return err
 	}
@@ -289,11 +288,11 @@ func (db *Database) Commit(node common.Hash, report bool) error {
 
 	db.uncache(node)
 
-	logger := log.Info
+	lgf := logger.Info
 	if !report {
-		logger = log.Debug
+		lgf = logger.Debug
 	}
-	logger("Persisted trie from memory database", "nodes", nodes-len(db.nodes), "size", storage-db.nodesSize, "time", time.Since(start),
+	lgf("Persisted trie from memory database", "nodes", nodes-len(db.nodes), "size", storage-db.nodesSize, "time", time.Since(start),
 		"gcnodes", db.gcnodes, "gcsize", db.gcsize, "gctime", db.gctime, "livenodes", len(db.nodes), "livesize", db.nodesSize)
 
 	// Reset the garbage collection statistics
@@ -303,7 +302,7 @@ func (db *Database) Commit(node common.Hash, report bool) error {
 }
 
 // commit is the private locked version of Commit.
-func (db *Database) commit(hash common.Hash, batch ethdb.Batch) error {
+func (db *Database) commit(hash common.Hash, batch kvdb.Batch) error {
 	// If the node does not exist, it's a previously committed node
 	node, ok := db.nodes[hash]
 	if !ok {
@@ -318,7 +317,7 @@ func (db *Database) commit(hash common.Hash, batch ethdb.Batch) error {
 		return err
 	}
 	// If we've reached an optimal match size, commit and start over
-	if batch.ValueSize() >= ethdb.IdealBatchSize {
+	if batch.ValueSize() >= kvdb.IdealBatchSize {
 		if err := batch.Write(); err != nil {
 			return err
 		}
